@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - Enemy
+  - Bomb
+  - Flame
+  - SoftWall
+  - RigidWall
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - 
+  - Water
+  - UI
+  - 
+  - 
+  - PostProcessing
+  - Player
+  - Wall
+  - Enemy
+  - Bomb
+  - PlayerDummy
+  - EnemyDummy
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: Grass
+    uniqueID: 3683779889
+    locked: 0
+  - name: Walls
+    uniqueID: 2606035235
+    locked: 0
+  - name: Bomb
+    uniqueID: 3758726329
+    locked: 0
+  - name: Player
+    uniqueID: 2266709913
+    locked: 0
+  - name: Enemies
+    uniqueID: 1305805759
+    locked: 0
+  - name: Portal
+    uniqueID: 3417678095
+    locked: 0
