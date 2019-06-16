@@ -21,7 +21,14 @@ public class GridManager : MonoBehaviour
     Cell[,] Grid;
 
     Dictionary<CellTypes, GameObject> cellTypesDictionary;
+    Dictionary<Powerups, GameObject> powerupsPrefabsDict;
     List<Cell> emptyTiles;      //These are the tiles on which the enemies will spawn.
+    List<Cell> allSoftWalls;
+    List<PlayerController> enemies;
+    PlayerController player;
+    List<GameObject> powerUpPrefabs;
+
+    int noOfPowerUps;
 
     /// <summary>
     /// Delegate for Game start event.
@@ -33,11 +40,42 @@ public class GridManager : MonoBehaviour
     private void Awake()
     {
         if (instance == null)
+        {
             instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+            
         else
             Destroy(gameObject);
+        cellTypesDictionary = new Dictionary<CellTypes, GameObject>();
+        powerupsPrefabsDict = new Dictionary<Powerups, GameObject>();
 
-        InitializeGrid();
+        //Load prefabs from the resources and set them to the dictionary.
+        int n = System.Enum.GetNames(typeof(CellTypes)).Length;
+        for (int i = 0; i < n; i++)
+        {
+            CellTypes tileType = (CellTypes)i;
+            GameObject prefab = Instantiate(Resources.Load("Prefabs/" + tileType.ToString())) as GameObject;
+            cellTypesDictionary.Add(tileType, prefab);
+            prefab.SetActive(false);
+        }
+
+       
+        CreatePlayerAndEnemies();
+
+        CreatePowerupsDictionary();
+    }
+
+    void CreatePowerupsDictionary()
+    {
+        noOfPowerUps = System.Enum.GetNames(typeof(Powerups)).Length;
+        for (int i = 1; i < noOfPowerUps; i++)
+        {
+            Powerups powerType = (Powerups)i;
+            GameObject prefab = Instantiate(Resources.Load("Prefabs/" + powerType.ToString())) as GameObject;
+            powerupsPrefabsDict.Add(powerType, prefab);
+            prefab.SetActive(false);
+        }
     }
 
     void InitializeGrid()
@@ -50,28 +88,24 @@ public class GridManager : MonoBehaviour
                 Destroy(transform.GetChild(i).gameObject);
             }
         }
-        cellTypesDictionary = new Dictionary<CellTypes, GameObject>();
-
         Grid = new Cell[xLength, yLength];
         emptyTiles = new List<Cell>();
-
-        //Load prefabs from the resources and set them to the dictionary.
-        int n = System.Enum.GetNames(typeof(CellTypes)).Length;
-        for (int i = 0; i < n; i++)
-        {
-            CellTypes tileType = (CellTypes)i;
-            GameObject prefab = Instantiate(Resources.Load("Prefabs/" + tileType.ToString())) as GameObject;
-            cellTypesDictionary.Add(tileType, prefab);
-            prefab.SetActive(false);
-        }
+        allSoftWalls = new List<Cell>();
+        
     }
 
     private void CreatePlayerAndEnemies()
     {
-        GameObject player = Instantiate(Resources.Load("Prefabs/Player")) as GameObject;
+        enemies = new List<PlayerController>();
+        GameObject playerInstance = Instantiate(Resources.Load("Prefabs/Player")) as GameObject;
+        player = playerInstance.GetComponent<PlayerController>();
+        playerInstance.SetActive(false);
+
         for(int i=0;i<GameManager.instance.noOfEnemies;i++)
         {
             GameObject enemy = Instantiate(Resources.Load("Prefabs/Enemy")) as GameObject;
+            enemies.Add(enemy.GetComponent<PlayerController>());
+            enemy.SetActive(false);
         }
     }
 
@@ -83,14 +117,27 @@ public class GridManager : MonoBehaviour
 
     public void StartGame()
     {
-        CreatePlayerAndEnemies();
+        InitializeGrid();
         GenerateGrid();
         GenerateBoundryWalls();
         FillPlayAreaWithRigidWalls();
         FillWithSoftWalls();
-        GameManager.instance.GameStart();
+        SetupPowerup();
+        player.gameObject.SetActive(true);
+        for (int i = 0; i < GameManager.instance.noOfEnemies; i++)
+        {
+            enemies[i].gameObject.SetActive(true);
+        }
+
         if (onGameStart != null)
             onGameStart(GridToWorld(1, yLength-2));     //Player should start from top left block.
+    }
+
+    void SetupPowerup()
+    {
+        Cell powerUpCell = allSoftWalls[Random.Range(0, allSoftWalls.Count)];
+        powerUpCell.thisCellHasPower = (Powerups)Random.Range(1, noOfPowerUps);
+        Debug.Log(powerUpCell.name + ": has " + powerUpCell.thisCellHasPower);
     }
 
     void GenerateGrid()
@@ -176,9 +223,9 @@ public class GridManager : MonoBehaviour
         //{
         //    Debug.Log("x: " + x + " - y:" + y);
         //}
-        if(Grid[x,y] != null)
+        if(Grid[x,y] != null)   //If there is already a cell in the given pos.
         {
-            if (Grid[x,y].thisCellType == CellTypes.Grass)
+            if (Grid[x,y].thisCellType == CellTypes.Grass)  //And if it is grass 
             {
                 //DestroyImmediate(Grid[x, y].gameObject);
                 emptyTiles.Remove(Grid[x, y]);
@@ -190,14 +237,20 @@ public class GridManager : MonoBehaviour
         Cell cell = tile.GetComponent<Cell>();
         tile.name = cellType.ToString() + "_" + x + "-" + y;
         cell.SetIDs(x, y);
-
+        cell.isThisCellOnFire = false;
         Grid[x, y] = cell;
+
+        cell.thisCellHasPower = Powerups.None;
 
         if (cellType == CellTypes.Grass && y < yLength-3 && x > 2)  //If it is grass, and avoids spawnign bots near player at game start.
         {
             emptyTiles.Add(cell);
         }
-            
+        
+        if(cellType == CellTypes.SoftWall)
+        {
+            allSoftWalls.Add(cell);
+        }
 
         gridOffset.x = -(xLength / 2);
         gridOffset.y = -(yLength / 2);
@@ -308,5 +361,26 @@ public class GridManager : MonoBehaviour
     {
         InitializeGrid();
         StartGame();
+    }
+
+    public bool IsPlayerCollidingWithAnyEnemy(Vector2Int playerGridCoords)
+    {
+        bool isColliding = false;
+
+        for(int i=0;i<enemies.Count;i++)
+        {
+            if(enemies[i].currGridCoords == playerGridCoords && !enemies[i].isDead())
+            {
+                return true;
+            }
+        }
+        return isColliding;
+    }
+
+    public void SpawnPowerup(Powerups type, int atGridX, int atGridY)
+    {
+        GameObject powerupInstance = Instantiate(powerupsPrefabsDict[type], GridToWorld(atGridX, atGridY), Quaternion.identity);
+        powerupInstance.transform.parent = transform;
+        powerupInstance.SetActive(true);
     }
 }

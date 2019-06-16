@@ -12,11 +12,19 @@ namespace BombermanCore
         Portal,
     }
 
+    public enum Powerups
+    {
+        None,
+        BombPower,
+        SpeedPower,
+    }
+
     [System.Serializable]
     public class Cell : MonoBehaviour
     { 
         public CellTypes thisCellType;
-    
+        public Powerups thisCellHasPower;
+        public bool isThisCellOnFire;
         private int xId, yId;
         public int X_ID
         {
@@ -38,6 +46,14 @@ namespace BombermanCore
         {
             xId = x;
             yId = y;
+        }
+
+        private void OnDestroy()
+        {
+            if(thisCellType == CellTypes.SoftWall && thisCellHasPower != Powerups.None)
+            {
+                GridManager.instance.SpawnPowerup(thisCellHasPower, xId, yId);
+            }
         }
     }
 }

@@ -54,7 +54,10 @@ public class GameManager : MonoBehaviour
     private void Awake()
     {
         if (instance == null)
+        {
             instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
         else
             Destroy(gameObject);
 
@@ -64,16 +67,32 @@ public class GameManager : MonoBehaviour
         gameBeingPlayed = false;
     }
 
+    private void OnEnable()
+    {
+        GridManager.onGameStart += OnGridLoaded;
+    }
+
+    private void OnDisable()
+    {
+        GridManager.onGameStart -= OnGridLoaded;
+    }
+
+    //We used this event to know when grid loading is complete.
+    void OnGridLoaded(Vector3? pos = null)
+    {
+
+    }
+
     //// Start is called before the first frame update
     //void Start()
     //{
-        
+
     //}
 
     //// Update is called once per frame
     //void Update()
     //{
-        
+
     //}
 
     public void GameOver(GameOverReasons reason)
@@ -93,9 +112,12 @@ public class GameManager : MonoBehaviour
         currNoOfEnemies = noOfEnemies;
         currScore = 0;
         mainMenu.SetActive(false);
+        gameOverScreen.SetActive(false);
         hud.SetActive(true);
         hud.scoreText.text = currScore.ToString();
         gameBeingPlayed = true;
+
+        GridManager.instance.StartGame();
     }
 
     public void OnEnemyKilled()
@@ -118,13 +140,14 @@ public class GameManager : MonoBehaviour
     {
         if(go == mainMenu.startButton)
         {
-            GridManager.instance.StartGame();
+            GameStart();   
         }
 
         if (go == gameOverScreen.restartButton)
         {
+            GameStart();
             //GridManager.instance.Restart();
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            //SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
     }
 }

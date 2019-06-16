@@ -13,24 +13,30 @@ public class PlayerController : MonoBehaviour
 
     public Types thisObjType;
     public float moveSpeed;
+    public float enhancedMoveSpeed;
     public int noOfBombsAllowed = 1;
     public GameObject bombPrefab;
     public LayerMask obstaclesForBots;
+    public Vector2Int currGridCoords;
+    public float speedPowerupCooldown = 10f;
 
     private Animator animator;
     private Rigidbody2D rBody;
     private Vector2 movementInput = Vector2.zero;
-    private Vector2Int currGridCoords;
     private bool dead;
     private Transform currTarget;
     private Vector2Int currGridTarget;
-
+    private float currMoveSpeed;
     private static int currNoOfBombs;
 
+    GridManager gridManager;
     private void OnEnable()
     {
         GridManager.onGameStart += OnGameStart;
         GameManager.onGameOver += GameManager_onGameOver;
+
+        if (gridManager == null)
+            gridManager = GridManager.instance;
     }
 
     
@@ -59,7 +65,8 @@ public class PlayerController : MonoBehaviour
     void SetupPlayer(Vector3 pos)
     {
         transform.position = pos;
-        currGridCoords = GridManager.instance.WorldToGridPos(transform.position);
+        currMoveSpeed = moveSpeed;
+        currGridCoords = gridManager.WorldToGridPos(transform.position);
         dead = false;
         currNoOfBombs = noOfBombsAllowed;
     }
@@ -69,17 +76,17 @@ public class PlayerController : MonoBehaviour
         Cell potentialCell;
         do
         {
-            potentialCell = GridManager.instance.RandomEmptyTile();//.transform.position;
+            potentialCell = gridManager.RandomEmptyTile();//.transform.position;
                                                                         //transform.position = pos;
             
             dead = false;
-            moveSpeed = Random.Range(2.0f, 4.5f);
+            currMoveSpeed = Random.Range(2.0f, 4.5f);
 
             //Set target now-
         } while (!SetNewTarget(potentialCell.X_ID, potentialCell.Y_ID));
 
         //Set the players position to potential cell.
-        transform.position = GridManager.instance.GridToWorld(potentialCell.X_ID, potentialCell.Y_ID);
+        transform.position = gridManager.GridToWorld(potentialCell.X_ID, potentialCell.Y_ID);
         currGridCoords = new Vector2Int(potentialCell.X_ID, potentialCell.Y_ID);
     }
 
@@ -92,7 +99,7 @@ public class PlayerController : MonoBehaviour
     {
         List<Cell> possibleTargets = new List<Cell>();
 
-        GridManager.instance.FindEgdeNeighbors(currCellXid, currCellYid, false, out possibleTargets);
+        gridManager.FindEgdeNeighbors(currCellXid, currCellYid, false, out possibleTargets);
         //Debug.Log(gameObject.name + " possible targets - " + possibleTargets.Count);
                     
         if(possibleTargets.Count > 0)
@@ -156,7 +163,25 @@ public class PlayerController : MonoBehaviour
                 else
                     Navigate();
 
+                ProcessCollisions();
                 Animate();
+            }
+        }
+    }
+
+    //The death condition is now not collision based, but check each frame if the current cell is on flame, then die.
+    private void ProcessCollisions()
+    {
+        if(gridManager.CellAt(currGridCoords.x, currGridCoords.y).isThisCellOnFire)
+        {
+            Die();
+        }
+
+        if(thisObjType == Types.Player)
+        {
+            if(gridManager.IsPlayerCollidingWithAnyEnemy(currGridCoords))
+            {
+                Die();
             }
         }
     }
@@ -204,15 +229,15 @@ public class PlayerController : MonoBehaviour
 
     void Move(Vector3 input)
     {
-        Vector3 newPos = transform.position + (input * moveSpeed * Time.deltaTime);
-        Vector3 playAreaMinPos = GridManager.instance.GridToWorld(1, 1);
-        Vector3 playAreaMaxPos = GridManager.instance.GridToWorld(GridManager.instance.xLength - 2, GridManager.instance.yLength - 2);
+        Vector3 newPos = transform.position + (input * currMoveSpeed * Time.deltaTime);
+        Vector3 playAreaMinPos = gridManager.GridToWorld(1, 1);
+        Vector3 playAreaMaxPos = gridManager.GridToWorld(gridManager.xLength - 2, gridManager.yLength - 2);
 
         newPos.x = Mathf.Clamp(newPos.x, playAreaMinPos.x, playAreaMaxPos.x);
         newPos.y = Mathf.Clamp(newPos.y, playAreaMinPos.y, playAreaMaxPos.y);
 
         rBody.MovePosition(newPos);
-        currGridCoords = GridManager.instance.WorldToGridPos(rBody.position);
+        currGridCoords = gridManager.WorldToGridPos(rBody.position);
     }
 
     void Animate()
@@ -228,7 +253,7 @@ public class PlayerController : MonoBehaviour
             currNoOfBombs--;
             GameObject bombInstance = Instantiate(bombPrefab) as GameObject;
             bombInstance.GetComponent<BombController>().SetIDs(currGridCoords.x, currGridCoords.y);
-            bombInstance.transform.position = GridManager.instance.GridToWorld(currGridCoords.x, currGridCoords.y);
+            bombInstance.transform.position = gridManager.GridToWorld(currGridCoords.x, currGridCoords.y);
         }
     }
 
@@ -242,38 +267,54 @@ public class PlayerController : MonoBehaviour
     //    ProcessCollision(collision);
     //}
 
-    private void OnTriggerExit2D(Collider2D collision)
-    {
-        ProcessCollision(collision);
-    }
+    //private void OnTriggerExit2D(Collider2D collision)
+    //{
+    //    ProcessCollision(collision);
+    //}
 
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        ProcessCollision(collision);
-    }
+    //private void OnCollisionEnter2D(Collision2D collision)
+    //{
+    //    ProcessCollision(collision);
+    //}
 
     void ProcessCollision(Collider2D other)
     {
-        if (other.CompareTag("Flame"))
-        {   
-            Die();
-        }
+        //if (other.CompareTag("Flame"))
+        //{   
+        //    Die();
+        //}
 
         if (thisObjType == Types.Player)
         {
-            if (other.CompareTag("Enemy"))
-                Die();
+            //if (other.CompareTag("Enemy"))
+            //    Die();
+            if(other.GetComponent<Cell>()==null)
+                Debug.Log("Other: " + other.tag);
+
+            if (other.CompareTag("BombPower"))
+            {
+                noOfBombsAllowed++;
+                currNoOfBombs++;
+                Destroy(other.gameObject);
+            }
+
+            if(other.CompareTag("SpeedPower"))
+            {
+                currMoveSpeed = enhancedMoveSpeed;
+                Invoke("ResetMoveSpeed", speedPowerupCooldown);
+                Destroy(other.gameObject);
+            }
         }
     }
 
-    void ProcessCollision(Collision2D collision)
-    {
-        if (thisObjType == Types.Player)
-        {
-            if (collision.otherCollider.CompareTag("Enemy"))
-                Die();
-        }
-    }
+    //void ProcessCollision(Collision2D collision)
+    //{
+    //    if (thisObjType == Types.Player)
+    //    {
+    //        if (collision.otherCollider.CompareTag("Enemy"))
+    //            Die();
+    //    }
+    //}
 
     void Die()
     {
@@ -282,16 +323,25 @@ public class PlayerController : MonoBehaviour
             dead = true;
             //GameManager.instance.GameOver();
             animator.SetTrigger("Death");
-            Destroy(gameObject, 1.25f);
+            StartCoroutine(OnDeath(1f));
         }
     }
 
-    private void OnDestroy()
+    IEnumerator OnDeath(float waitTime)
     {
+        yield return new WaitForSeconds(waitTime);
+
         if (thisObjType == Types.Player)
             GameManager.instance.GameOver(GameOverReasons.PlayerDead);
         else
             GameManager.instance.OnEnemyKilled();
+
+        gameObject.SetActive(false);
+    }
+
+    private void OnDestroy()
+    {
+       
     }
 
     /// <summary>
@@ -311,5 +361,16 @@ public class PlayerController : MonoBehaviour
     public static void OnBombExploded()
     {
         currNoOfBombs++;
+        currNoOfBombs = Mathf.Clamp(currNoOfBombs, 0, currNoOfBombs);
+    }
+
+    public bool isDead()
+    {
+        return dead;
+    }
+
+    void ResetMoveSpeed()
+    {
+        currMoveSpeed = moveSpeed;
     }
 }

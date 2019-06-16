@@ -9,6 +9,8 @@ TagManager:
   - Flame
   - SoftWall
   - RigidWall
+  - BombPower
+  - SpeedPower
   layers:
   - Default
   - TransparentFX
@@ -51,6 +53,9 @@ TagManager:
     locked: 0
   - name: Walls
     uniqueID: 2606035235
+    locked: 0
+  - name: Powerups
+    uniqueID: 2908774913
     locked: 0
   - name: Bomb
     uniqueID: 3758726329

@@ -53,4 +53,9 @@ public class FlameController : MonoBehaviour
         _Xid = xId;
         _Yid = yId;
     }
+
+    private void OnDestroy()
+    {
+        GridManager.instance.CellAt(_Xid, _Yid).isThisCellOnFire = false;
+    }
 }
