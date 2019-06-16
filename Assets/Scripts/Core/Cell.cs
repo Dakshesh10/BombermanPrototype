@@ -50,7 +50,7 @@ namespace BombermanCore
 
         private void OnDestroy()
         {
-            if(thisCellType == CellTypes.SoftWall && thisCellHasPower != Powerups.None)
+            if(thisCellType == CellTypes.SoftWall && thisCellHasPower != Powerups.None && isThisCellOnFire)
             {
                 GridManager.instance.SpawnPowerup(thisCellHasPower, xId, yId);
             }

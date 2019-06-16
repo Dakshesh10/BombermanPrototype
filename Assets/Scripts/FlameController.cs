@@ -10,7 +10,18 @@ public class FlameController : MonoBehaviour
 
     private void OnEnable()
     {
+        GameManager.onGameOver += OnGameOver;
         Destroy(gameObject, 1.0f);
+    }
+
+    private void OnDisable()
+    {
+        GameManager.onGameOver -= OnGameOver;
+    }
+
+    void OnGameOver()
+    {
+        Destroy(gameObject);
     }
 
     private void OnTriggerEnter2D(Collider2D collision)

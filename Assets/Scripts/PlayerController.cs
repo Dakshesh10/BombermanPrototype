@@ -14,7 +14,7 @@ public class PlayerController : MonoBehaviour
     public Types thisObjType;
     public float moveSpeed;
     public float enhancedMoveSpeed;
-    public int noOfBombsAllowed = 1;
+    //public int noOfBombsAllowed = 1;
     public GameObject bombPrefab;
     public LayerMask obstaclesForBots;
     public Vector2Int currGridCoords;
@@ -27,19 +27,29 @@ public class PlayerController : MonoBehaviour
     private Transform currTarget;
     private Vector2Int currGridTarget;
     private float currMoveSpeed;
-    private static int currNoOfBombs;
+    //private static int currNoOfBombs;
 
     GridManager gridManager;
+
+    public delegate void OnPowerupCollected(Powerups type);
+    public static event OnPowerupCollected onPowerupCollected;
+
     private void OnEnable()
     {
         GridManager.onGameStart += OnGameStart;
         GameManager.onGameOver += GameManager_onGameOver;
+        GameManager.onGameStart += OnGameStart;
 
         if (gridManager == null)
             gridManager = GridManager.instance;
     }
 
-    
+    private void OnDisable()
+    {
+        GridManager.onGameStart -= OnGameStart;
+        GameManager.onGameOver -= GameManager_onGameOver;
+        GameManager.onGameStart += OnGameStart;
+    }
 
     private void GameManager_onGameOver()
     {
@@ -67,8 +77,15 @@ public class PlayerController : MonoBehaviour
         transform.position = pos;
         currMoveSpeed = moveSpeed;
         currGridCoords = gridManager.WorldToGridPos(transform.position);
+        
+    }
+
+    void OnGameStart()
+    {
         dead = false;
-        currNoOfBombs = noOfBombsAllowed;
+        //noOfBombsAllowed = 1;   //On Restart set bomb capacity to 1.
+        //currNoOfBombs = noOfBombsAllowed;
+        //GameManager.instance.hud.SetTallyText(currNoOfBombs, noOfBombsAllowed);
     }
 
     void SetupEnemy()
@@ -138,12 +155,6 @@ public class PlayerController : MonoBehaviour
         //while (possibleTargets.Count <= 0);
 
         
-    }
-
-    private void OnDisable()
-    {
-        GridManager.onGameStart -= OnGameStart;
-        GameManager.onGameOver -= GameManager_onGameOver;
     }
 
     private void Awake()
@@ -248,9 +259,9 @@ public class PlayerController : MonoBehaviour
 
     void DropBomb()
     {
-        if (currNoOfBombs > 0)
+        if (GameManager.instance.currNoOfBombs > 0)
         {
-            currNoOfBombs--;
+            GameManager.instance.OnBombDropped();
             GameObject bombInstance = Instantiate(bombPrefab) as GameObject;
             bombInstance.GetComponent<BombController>().SetIDs(currGridCoords.x, currGridCoords.y);
             bombInstance.transform.position = gridManager.GridToWorld(currGridCoords.x, currGridCoords.y);
@@ -293,13 +304,14 @@ public class PlayerController : MonoBehaviour
 
             if (other.CompareTag("BombPower"))
             {
-                noOfBombsAllowed++;
-                currNoOfBombs++;
+               
+                GameManager.instance.onPowerupCollected(Powerups.BombPower);
                 Destroy(other.gameObject);
             }
 
             if(other.CompareTag("SpeedPower"))
             {
+                GameManager.instance.onPowerupCollected(Powerups.SpeedPower);
                 currMoveSpeed = enhancedMoveSpeed;
                 Invoke("ResetMoveSpeed", speedPowerupCooldown);
                 Destroy(other.gameObject);
@@ -358,11 +370,12 @@ public class PlayerController : MonoBehaviour
         return hit;
     }
 
-    public static void OnBombExploded()
-    {
-        currNoOfBombs++;
-        currNoOfBombs = Mathf.Clamp(currNoOfBombs, 0, currNoOfBombs);
-    }
+    //public static void OnBombExploded()
+    //{
+    //    currNoOfBombs++;
+    //    currNoOfBombs = Mathf.Clamp(currNoOfBombs, 0, currNoOfBombs);
+    //    GameManager.instance.hud.SetTallyText(currNoOfBombs, noOfBombsAllowed);
+    //}
 
     public bool isDead()
     {

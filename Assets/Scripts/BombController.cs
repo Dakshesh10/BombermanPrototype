@@ -14,8 +14,20 @@ public class BombController : MonoBehaviour
 
     private void OnEnable()
     {
+        GameManager.onGameOver += OnGameOver;
         exploded = false;
         neighbors = new List<Cell>();
+    }
+
+    private void OnDisable()
+    {
+        GameManager.onGameOver -= OnGameOver;
+    }
+
+    private void OnGameOver()
+    {
+        StopAllCoroutines();
+        Destroy(gameObject);
     }
 
     public void SetIDs(int xId, int yId)
@@ -45,7 +57,8 @@ public class BombController : MonoBehaviour
 
         Explode();
         yield return new WaitForEndOfFrame();
-        PlayerController.OnBombExploded();
+        GameManager.instance.OnBombExploded();
+        //PlayerController.OnBombExploded();
         Destroy(gameObject);
     }
 

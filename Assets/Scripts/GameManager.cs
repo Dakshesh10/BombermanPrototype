@@ -35,7 +35,12 @@ public class GameManager : MonoBehaviour
     [System.Serializable]
     public class HUD : UiScreen
     {
-        public Text scoreText;
+        public Text scoreText, bombTallyText;
+
+        public void SetTallyText(int currNoOfBombs, int noOfBombsAllowed)
+        {
+            bombTallyText.text = currNoOfBombs.ToString() + " / " + noOfBombsAllowed.ToString();
+        }
     }
 
     public HUD hud;
@@ -46,8 +51,13 @@ public class GameManager : MonoBehaviour
     [HideInInspector]
     public bool gameBeingPlayed;
 
-    public delegate void OnGameOver();
-    public static event OnGameOver onGameOver;
+    public int noOfBombsAllowed = 1;
+
+    [HideInInspector]
+    public int currNoOfBombs;
+
+    public delegate void OnGameEvents();
+    public static event OnGameEvents onGameOver, onGameStart;
 
     int currNoOfEnemies, currScore;
 
@@ -70,11 +80,44 @@ public class GameManager : MonoBehaviour
     private void OnEnable()
     {
         GridManager.onGameStart += OnGridLoaded;
+        //PlayerController.onPowerupCollected += onPowerupCollected;
     }
-
     private void OnDisable()
     {
         GridManager.onGameStart -= OnGridLoaded;
+    }
+
+    public void onPowerupCollected(Powerups type)
+    {
+        Debug.Log("collected: " + type);
+        switch(type)
+        {
+            case Powerups.BombPower:
+                noOfBombsAllowed++;
+                currNoOfBombs++;
+                hud.SetTallyText(currNoOfBombs, noOfBombsAllowed);
+                break;
+
+            case Powerups.SpeedPower:
+                break;
+
+            default:
+                Debug.Log("Invalid power type");
+                break;
+        }
+    }
+
+    public void OnBombExploded()
+    {
+        currNoOfBombs++;
+        currNoOfBombs = Mathf.Clamp(currNoOfBombs, 0, noOfBombsAllowed);
+        hud.SetTallyText(currNoOfBombs, noOfBombsAllowed);
+    }
+
+    public void OnBombDropped()
+    {
+        currNoOfBombs--;
+        hud.SetTallyText(currNoOfBombs, noOfBombsAllowed);
     }
 
     //We used this event to know when grid loading is complete.
@@ -109,6 +152,8 @@ public class GameManager : MonoBehaviour
 
     public void GameStart()
     {
+        GridManager.instance.StartGame();
+
         currNoOfEnemies = noOfEnemies;
         currScore = 0;
         mainMenu.SetActive(false);
@@ -116,8 +161,14 @@ public class GameManager : MonoBehaviour
         hud.SetActive(true);
         hud.scoreText.text = currScore.ToString();
         gameBeingPlayed = true;
+        noOfBombsAllowed = 1;
+        currNoOfBombs = 1;
+        hud.SetTallyText(currNoOfBombs, noOfBombsAllowed);
 
-        GridManager.instance.StartGame();
+        if(onGameStart!=null)
+        {
+            onGameStart();
+        }
     }
 
     public void OnEnemyKilled()
