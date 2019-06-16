@@ -42,6 +42,7 @@ public class GridManager : MonoBehaviour
 
     void InitializeGrid()
     {
+        //Destroy all child objects for new Grid.
         if(transform.childCount > 0)
         {
             for(int i=0;i<transform.childCount;i++)
@@ -63,8 +64,6 @@ public class GridManager : MonoBehaviour
             cellTypesDictionary.Add(tileType, prefab);
             prefab.SetActive(false);
         }
-        
-
     }
 
     private void CreatePlayerAndEnemies()
@@ -86,7 +85,7 @@ public class GridManager : MonoBehaviour
     {
         CreatePlayerAndEnemies();
         GenerateGrid();
-        GenerateRigidWalls();
+        GenerateBoundryWalls();
         FillPlayAreaWithRigidWalls();
         FillWithSoftWalls();
         GameManager.instance.GameStart();
@@ -105,7 +104,7 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    void GenerateRigidWalls()
+    void GenerateBoundryWalls()
     {
         //First spawn boundaries.
 
@@ -271,15 +270,17 @@ public class GridManager : MonoBehaviour
         int xStart = x - 1, xEnd = x + 1;
         int yStart = y - 1, yEnd = y + 1;
 
+        //Edge neighbors in row.
         for (int i = xStart; i <= xEnd; i++)
         {
-            if(i!=x)
+            if(i!=x)        //Exclude the curr tile
             {
                 if (Grid[i, y].thisCellType == CellTypes.Grass || (includeSoftWall && Grid[i, y].thisCellType == CellTypes.SoftWall))
                     neighbors.Add(Grid[i, y]);
             }
         }
 
+        //Edge neighbors in cols.
         for (int i = yStart; i <= yEnd; i++)
         {
             if (i != y)

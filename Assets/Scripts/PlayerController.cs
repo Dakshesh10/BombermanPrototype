@@ -52,7 +52,7 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            SetupEnemy(GridManager.instance.RandomEmptyTile().transform.position);
+            SetupEnemy();
         }
     }
 
@@ -64,50 +64,73 @@ public class PlayerController : MonoBehaviour
         currNoOfBombs = noOfBombsAllowed;
     }
 
-    void SetupEnemy(Vector3 pos)
+    void SetupEnemy()
     {
-        transform.position = pos;
-        currGridCoords = GridManager.instance.WorldToGridPos(transform.position);
-        dead = false;
-        moveSpeed = Random.Range(2.0f, 4.5f);
-        //Set target now-
-        SetNewTarget();
+        Cell potentialCell;
+        do
+        {
+            potentialCell = GridManager.instance.RandomEmptyTile();//.transform.position;
+                                                                        //transform.position = pos;
+            
+            dead = false;
+            moveSpeed = Random.Range(2.0f, 4.5f);
+
+            //Set target now-
+        } while (!SetNewTarget(potentialCell.X_ID, potentialCell.Y_ID));
+
+        //Set the players position to potential cell.
+        transform.position = GridManager.instance.GridToWorld(potentialCell.X_ID, potentialCell.Y_ID);
+        currGridCoords = new Vector2Int(potentialCell.X_ID, potentialCell.Y_ID);
     }
 
-    void SetNewTarget()
+    /// <summary>
+    /// Returns true if the start cell has path to choose from. If not try finding another potential start cell.
+    /// </summary>
+    /// <param name="startCell"></param>
+    /// <returns></returns>
+    bool SetNewTarget(int currCellXid, int currCellYid)
     {
         List<Cell> possibleTargets = new List<Cell>();
 
-        do
+        GridManager.instance.FindEgdeNeighbors(currCellXid, currCellYid, false, out possibleTargets);
+        //Debug.Log(gameObject.name + " possible targets - " + possibleTargets.Count);
+                    
+        if(possibleTargets.Count > 0)
         {
-            GridManager.instance.FindEgdeNeighbors(currGridCoords.x, currGridCoords.y, false, out possibleTargets);
-            //Debug.Log(possibleTargets.Count);
-        }
-        while (possibleTargets.Count <= 0);
-
-        currTarget = null;
-        
-        while (currTarget == null)
-        {
-            int randIndex = Random.Range(0, possibleTargets.Count);
-            Vector2 dir = possibleTargets[randIndex].transform.position - transform.position;
-            dir.Normalize();
-            //Vector2Int targetGridCoords = GridManager.instance.WorldToGridPos((Vector2)EndPointInThisDir(dir).position + (-1 * dir));
-            currTarget = possibleTargets[randIndex].transform;
             
-            if (currTarget == null)
+            currTarget = null;
+
+            while (currTarget == null)
             {
-                possibleTargets.RemoveAt(randIndex);
-                if (possibleTargets.Count <= 0)
+                int randIndex = Random.Range(0, possibleTargets.Count);
+                Vector2Int dir = new Vector2Int(possibleTargets[randIndex].X_ID, possibleTargets[randIndex].Y_ID) - new Vector2Int(currCellXid, currCellYid);
+                //dir.Normalize();
+                //Vector2Int targetGridCoords = GridManager.instance.WorldToGridPos((Vector2)EndPointInThisDir(dir).position + (-1 * dir));
+                currTarget = possibleTargets[randIndex].transform;
+
+                if (currTarget == null)
                 {
-                    Debug.Log("Ran out of options..");
+                    possibleTargets.RemoveAt(randIndex);
+                    if (possibleTargets.Count <= 0)
+                    {
+                        Debug.LogError("Ran out of options..");
+                    }
+                }
+                else
+                {
+                    movementInput = dir;
                 }
             }
-            else
-            {
-                movementInput = dir;
-            }
+            return true;
         }
+        else    //If there are no possible paths, try finding another.
+        {
+            return false;
+            //SetNewTarget();
+        }
+        //while (possibleTargets.Count <= 0);
+
+        
     }
 
     private void OnDisable()
@@ -132,6 +155,7 @@ public class PlayerController : MonoBehaviour
                     ProcessInput();
                 else
                     Navigate();
+
                 Animate();
             }
         }
@@ -170,7 +194,7 @@ public class PlayerController : MonoBehaviour
         if(Vector3.Distance(transform.position, currTarget.position) <= 0.05f)
         {
             //Debug.Log("Decide new target");
-            SetNewTarget();
+            SetNewTarget(currGridCoords.x, currGridCoords.y);
         }
         else
         {

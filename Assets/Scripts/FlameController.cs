@@ -6,6 +6,8 @@ public class FlameController : MonoBehaviour
 {
     public Vector2Int originOfFlame;
 
+    private int _Xid, _Yid;
+
     private void OnEnable()
     {
         Destroy(gameObject, 1.0f);
@@ -35,9 +37,20 @@ public class FlameController : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        
+    }
+
     public void SetOriginOfThisFlame(int x, int y)
     {
         originOfFlame.x = x;
         originOfFlame.y = y;
+    }
+
+    public void SetIDs(int xId, int yId)
+    {
+        _Xid = xId;
+        _Yid = yId;
     }
 }
